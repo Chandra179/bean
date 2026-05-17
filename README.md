@@ -977,3 +977,71 @@ println!("rect1 is {rect1:?}");
 // Output: rect1 is Rectangle { width: 30, height: 50 }
 ```
 
+### Why Use Methods Instead of Functions?
+The main benefit is organization and discoverability:
+```rust
+// All Rectangle-related functionality in one place
+impl Rectangle {
+    fn area(&self) -> u32 { }
+    fn perimeter(&self) -> u32 { }
+    fn can_hold(&self, other: &Rectangle) -> bool { }
+    fn square(size: u32) -> Rectangle { }  // Associated function (no self!)
+}
+
+// Users can easily find what Rectangle can do
+// No need to search through entire codebase
+```
+
+### Self parameter & variations
+```rust
+impl Rectangle {
+    // &self = "I borrow myself immutably (can read, can't change)"
+    fn area(&self) -> u32 {
+        self.width * self.height  // self refers to the instance
+    }
+    
+    // &mut self = "I borrow myself mutably (can change myself)"
+    fn double_size(&mut self) {
+        self.width *= 2;
+        self.height *= 2;
+    }
+    
+    // self = "I take ownership of myself" (rare!)
+    fn destroy(self) {
+        // After this, the instance is gone
+    }
+}
+
+// VARIATION
+struct Counter {
+    count: u32,
+}
+
+impl Counter {
+    // &self: Read-only access (most common)
+    fn get_count(&self) -> u32 {
+        self.count
+    }
+    
+    // &mut self: Can modify the instance
+    fn increment(&mut self) {
+        self.count += 1;
+    }
+    
+    // self: Takes ownership, destroys the original
+    fn consume(self) -> u32 {
+        self.count  // After this, 'self' is gone
+    }
+}
+
+fn main() {
+    let mut counter = Counter { count: 0 };
+    
+    println!("{}", counter.get_count());  // Works
+    counter.increment();                   // Works (needs mut)
+    println!("{}", counter.get_count());  // Still works!
+    
+    let value = counter.consume();         // Takes ownership
+    // counter.get_count();  // ERROR! counter was consumed
+}
+```
