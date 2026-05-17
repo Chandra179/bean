@@ -1203,3 +1203,57 @@ match data {
     }
 }
 ```
+
+### The match Control Flow Construct
+match compares a value against a series of patterns (think "shapes the data could take") 
+and runs code for the first one that fits.
+
+The Coin Example Visualized
+
+```rust
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter,
+}
+
+fn value_in_cents(coin: Coin) -> u8 {
+    match coin {
+        Coin::Penny   => 1,   // If coin is Penny, return 1
+        Coin::Nickel  => 5,   // If coin is Nickel, return 5
+        Coin::Dime    => 10,  // If coin is Dime, return 10
+        Coin::Quarter => 25,  // If coin is Quarter, return 25
+    }
+}
+
+Coin::Penny => 1,  // Just returns 1
+Coin::Penny => {
+    println!("Lucky penny!");  // Do something extra
+    1                          // Still return 1 (no semicolon!)
+}
+```
+
+Why match Is Different from if
+```rust
+// if - ONLY checks boolean conditions
+if some_condition == true {
+    // do something
+}
+
+// match - checks PATTERNS (any type!)
+match some_value {
+    Pattern1 => { },  // Can check structure, not just true/false
+    Pattern2 => { },
+}
+```
+match is exhaustive — you MUST handle ALL possible patterns:
+
+```rust
+match coin {
+    Coin::Penny => 1,
+    Coin::Nickel => 5,
+    // Missing Dime and Quarter? COMPILER ERROR!
+}
+```
+The compiler says: "What about Dime and Quarter? You forgot them!" This prevents bugs where you forget to handle a case.
