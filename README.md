@@ -735,3 +735,245 @@ let r2: &str = &s[..];
 
 &String = Reference to a String (pointer to the String struct on stack)
 &str = Reference to a string slice (pointer directly to heap data + length)
+
+## Chapter 5
+```rust
+fn main() {
+    let mut user1 = User {
+        active: true,
+        username: String::from("someusername123"),
+        email: String::from("someone@example.com"),
+        sign_in_count: 1,
+    };
+
+    user1.email = String::from("anotheremail@example.com");
+}
+```
+Note that the entire instance must be mutable; Rust doesn’t allow us to mark only certain fields as mutable. 
+
+```rust
+fn build_user(email: String, username: String) -> User {
+    User {
+        active: true,
+        username: username,
+        email: email,
+        sign_in_count: 1,
+    }
+}
+```
+
+#### Field Init Shorthand
+```rust
+fn build_user(email: String, username: String) -> User {
+    User {
+        active: true,
+        username,
+        email,
+        sign_in_count: 1,
+    }
+}
+```
+Because the email field and the email parameter have the same name, we only need to write email rather than email: email
+
+
+#### Creating instances with struct update syntax
+```rust
+fn main() {
+
+    let user2 = User {
+        active: user1.active,
+        username: user1.username,
+        email: String::from("another@example.com"),
+        sign_in_count: user1.sign_in_count,
+    };
+}
+
+fn main() {
+
+    let user2 = User {
+        email: String::from("another@example.com"),
+        ..user1
+    };
+}
+```
+
+#### Tuple structs 
+```rust
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
+
+fn main() {
+    let black = Color(0, 0, 0);
+    let origin = Point(0, 0, 0);
+}
+```
+
+#### Unit like structs
+```rust
+struct AlwaysEqual;
+
+fn main() {
+    let subject = AlwaysEqual;
+}
+```
+
+#### Lifetime
+```rust
+struct User {
+    active: bool,
+    username: &str,
+    email: &str,
+    sign_in_count: u64,
+}
+
+fn main() {
+    let user1 = User {
+        active: true,
+        username: "someusername123",
+        email: "someone@example.com",
+        sign_in_count: 1,
+    };
+}
+
+$ cargo run
+   Compiling structs v0.1.0 (file:///projects/structs)
+error[E0106]: missing lifetime specifier
+ --> src/main.rs:3:15
+  |
+3 |     username: &str,
+  |               ^ expected named lifetime parameter
+  |
+help: consider introducing a named lifetime parameter
+  |
+1 ~ struct User<'a> {
+2 |     active: bool,
+3 ~     username: &'a str,
+  |
+
+error[E0106]: missing lifetime specifier
+ --> src/main.rs:4:12
+  |
+4 |     email: &str,
+  |            ^ expected named lifetime parameter
+  |
+help: consider introducing a named lifetime parameter
+  |
+1 ~ struct User<'a> {
+2 |     active: bool,
+3 |     username: &str,
+4 ~     email: &'a str,
+  |
+
+For more information about this error, try `rustc --explain E0106`.
+error: could not compile `structs` (bin "structs") due to 2 previous errors
+
+```
+
+Rust needs lifetimes to prove, at compile time, that every reference always points to valid data — without needing a garbage collector.
+
+For simple functions, Rust infers lifetimes automatically:
+```rust
+fn first_word(s: &str) -> &str {  // lifetimes inferred, no annotation needed
+    &s[0..1]
+}
+```
+
+But for structs holding references, the compiler hits a wall:
+```rust
+struct User {
+    username: &str,  // Who owns this string? How long does it live?
+    email: &str,     // Same question.
+}
+```
+
+#### Three ways to share data
+1. Clone it (wasteful)
+```rust
+let name = String::from("Alice");
+
+let user1 = User { username: name.clone(), email: ... };
+let user2 = User { username: name.clone(), email: ... };
+
+// Two copies of "Alice" exist now. Memory waste.
+```
+
+2. Move it (can't reuse)
+```rust
+let name = String::from("Alice");
+
+let user1 = User { username: name, email: ... };
+// name is gone. Can't use it for anything else.
+```
+
+3. Borrow it (efficient, but needs lifetimes)
+```rust
+let name = String::from("Alice");
+
+let user1 = User { username: &name, email: ... };
+let user2 = User { username: &name, email: ... };
+// Both point to the SAME 'name'. One copy. Efficient.
+
+println!("{}", name);  // We can still use 'name'!
+```
+
+Why NOT always use references?
+Because references create chains of dependency that can strangle your program's flexibility.
+
+#### Real scenarios where references shine
+1. Large data you don't want to copy
+```rust
+let huge_text = load_entire_book();  // 10MB string
+
+// Without borrowing, each SearchResult would clone parts of this
+// With borrowing, they just point into it:
+struct SearchResult<'a> {
+    snippet: &'a str,  // Just a pointer, zero copy
+    page_number: usize,
+}
+
+let results: Vec<SearchResult> = search(&huge_text, "whale");
+// All results point into huge_text. No cloning 10MB strings.
+```
+
+2. Multiple "views" into the same data
+```rust
+let data = vec![1, 2, 3, 4, 5, 6, 7, 8];
+
+let first_half = &data[0..4];   // Just a view
+let second_half = &data[4..8];  // Another view
+let all_of_it = &data[..];      // Yet another view
+
+// Three references, ONE allocation. Zero copies.
+```
+
+3. Temporary access without taking ownership
+```rust
+fn print_user(user: &User) {  // Borrow, don't take ownership
+    println!("{}", user.username);
+}
+
+let user = User { username: String::from("Alice"), ... };
+
+print_user(&user);  // Lends the user temporarily
+print_user(&user);  // Can do it again
+// user still owns the data, we can keep using it
+```
+
+#### Adding Functionality with Derived Traits
+When you create a custom struct in Rust, you can't just print it using println!("{}", my_struct) because Rust doesn't know how to display it. (Struct, Enums)
+
+```rust
+println!("rect1 is {rect1}");  // Error! Rectangle doesn't implement Display
+println!("rect1 is {rect1:?}");  // Still error! Rectangle doesn't implement Debug
+
+#[derive(Debug)]
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+// Now this works!
+println!("rect1 is {rect1:?}");
+// Output: rect1 is Rectangle { width: 30, height: 50 }
+```
+
