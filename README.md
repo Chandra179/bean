@@ -1045,3 +1045,161 @@ fn main() {
     // counter.get_count();  // ERROR! counter was consumed
 }
 ```
+
+## Chapter 6
+```rust
+    enum IpAddrKind {
+        V4,
+        V6,
+    }
+
+    struct IpAddr {
+        kind: IpAddrKind,
+        address: String,
+    }
+
+    let home = IpAddr {
+        kind: IpAddrKind::V4,
+        address: String::from("127.0.0.1"),
+    };
+
+    let loopback = IpAddr {
+        kind: IpAddrKind::V6,
+        address: String::from("::1"),
+    };
+```
+
+Rather than an enum inside a struct, we can put data directly into each enum variant. This new definition of the IpAddr enum says that both V4 and V6 variants will have associated String values:
+
+```rust
+    enum IpAddr {
+        V4(String),
+        V6(String),
+    }
+
+    let home = IpAddr::V4(String::from("127.0.0.1"));
+
+    let loopback = IpAddr::V6(String::from("::1"));
+```
+
+There’s another advantage to using an enum rather than a struct: Each variant can have different types and amounts of associated data. Version four IP addresses will always have four numeric components that will have values between 0 and 255. If we wanted to store V4 addresses as four u8 values but still express V6 addresses as one String value, we wouldn’t be able to with a struct. Enums handle this case with ease:
+
+```rust
+    enum IpAddr {
+        V4(u8, u8, u8, u8),
+        V6(String),
+    }
+
+    let home = IpAddr::V4(127, 0, 0, 1);
+
+    let loopback = IpAddr::V6(String::from("::1"));
+
+```
+
+### Different Data, Same Type
+This is the crucial part - look at the Message example:
+
+```rust
+enum Message {
+    Quit,                        // No data at all
+    Move { x: i32, y: i32 },    // Named fields (like a struct)
+    Write(String),               // Just a String
+    ChangeColor(i32, i32, i32), // Three integers
+}
+```
+
+Why not just use separate structs?
+```rust
+// You COULD make separate structs:
+struct QuitMessage;
+struct MoveMessage { x: i32, y: i32 }
+struct WriteMessage(String);
+struct ChangeColorMessage(i32, i32, i32);
+
+// BUT - they're all different types! You can't put them in the same collection or pass them to the same function:
+```
+
+```rust
+// With separate structs - DOESN'T WORK:
+fn handle_message(msg: ???) {  // What type would you put here?
+    // Can't accept all message types!
+}
+```
+
+```rust
+// With enum - WORKS PERFECTLY:
+fn handle_message(msg: Message) {  // Single type!
+    match msg {
+        Message::Quit => { /* handle quit */ }
+        Message::Move { x, y } => { /* handle move */ }
+        Message::Write(text) => { /* handle write */ }
+        Message::ChangeColor(r, g, b) => { /* handle color change */ }
+    }
+}
+```
+
+### Option<T>
+Instead of null, Rust uses an enum with two variants:
+
+```rust
+enum Option<T> {  // T means "any type"
+    Some(T),      // "I have a value of type T"
+    None,         // "I have no value"
+}
+```
+
+Simple Examples:
+```rust
+// When you HAVE a value:
+let name = Some(String::from("Alice"));  // Option<String>
+
+// When you DON'T have a value:
+let name: Option<String> = None;  // Must specify type for None
+
+// Regular values can NEVER be null:
+let x: i32 = 5;  // This is ALWAYS a valid integer
+```
+
+Why This Is Better
+The magic: Option<T> and T are DIFFERENT types. You can't accidentally use an Option where you need a real value:
+
+```rust
+let x: i32 = 5;
+let y: Option<i32> = Some(5);
+
+// This WON'T COMPILE:
+let sum = x + y;  // Error! Can't add i32 and Option<i32>
+```
+This forces you to handle the "nothing" case before using the value:
+
+```rust
+// You MUST handle both cases:
+match y {
+    Some(value) => println!("Sum is {}", x + value),  // Handle "has value"
+    None => println!("No value to add"),              // Handle "no value"
+}
+```
+Real-World Analogy
+Think of it like this:
+
+Normal variable (i32): A box that GUARANTEED contains an item
+
+Option<i32>: A box that MIGHT contain an item, and you must check before opening
+
+```rust
+// THIS is like what other languages do (dangerous):
+let data = get_data();  // Might be null!
+let result = data + 1;  // CRASH if null!
+
+// THIS is what Rust makes you do (safe):
+let data: Option<i32> = get_data();  // Clearly marked as "might be absent"
+match data {
+    Some(value) => {
+        let result = value + 1;  // Safe! We verified it exists
+        println!("Result: {}", result);
+    }
+    None => {
+        println!("No data available");  // We handle the missing case
+    }
+}
+```
