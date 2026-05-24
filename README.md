@@ -1257,3 +1257,121 @@ match coin {
 }
 ```
 The compiler says: "What about Dime and Quarter? You forgot them!" This prevents bugs where you forget to handle a case.
+
+### Concise Control Flow with if let and let...else
+```rust
+
+    let config_max = Some(3u8);
+    match config_max {
+        Some(max) => println!("The maximum is configured to be {max}"),
+        _ => (),
+    }
+
+    let config_max = Some(3u8);
+    if let Some(max) = config_max {
+        println!("The maximum is configured to be {max}");
+    }
+```
+
+```rust
+    enum Coin {
+        Penny,
+        Nickel,
+        Dime,
+        Quarter(String),  // Quarter holds a state name
+    }
+
+    let coin = Coin::Quarter(String::from("California"));
+    let coin = Coin::Dime;
+    let coin = Coin::Penny;
+
+    let mut count = 0;
+    match coin { 
+        Coin::Quarter(state) => println!("State quarter from {state:?}!"),
+        _ => count += 1,
+    }
+
+    // Or we could use an if let and else expression, like this:
+
+    let mut count = 0;
+    if let Coin::Quarter(state) = coin {
+        println!("State quarter from {state:?}!");
+    } else {
+        count += 1;
+    }
+```
+
+Using if let means less typing, less indentation, and less boilerplate code. However, you lose the exhaustive checking match enforces that ensures that you aren’t forgetting to handle any cases. Choosing between match and if let depends on what you’re doing in your particular situation and whether gaining conciseness is an appropriate trade-off for losing exhaustive checking.
+
+### Staying on the “Happy Path” with let...else
+```rust
+// Step 1: Define what a UsState is
+enum UsState {
+    Alabama,
+    Alaska,
+}
+
+// Step 2: Add methods to UsState
+impl UsState {
+    // Now UsState has a method called existed_in
+    fn existed_in(&self, year: u16) -> bool {
+        // We can use &self to know WHICH state we're dealing with
+        match self {
+            UsState::Alabama => year >= 1819,
+            UsState::Alaska => year >= 1959,
+        }
+    }
+}
+
+let my_state = UsState::Alaska;
+my_state.existed_in(1900);  // This works! Returns false
+```
+
+```rust
+fn describe_state_quarter(coin: Coin) -> Option<String> {
+    if let Coin::Quarter(state) = coin {
+        if state.existed_in(1900) {
+            Some(format!("{state:?} is pretty old, for America!"))
+        } else {
+            Some(format!("{state:?} is relatively new."))
+        }
+    } else {
+        None
+    }
+}
+```
+
+### if let & let else
+```rust
+fn describe_state_quarter(coin: Coin) -> Option<String> {
+    let state = if let Coin::Quarter(state) = coin {
+        state  // Got a quarter, use its state
+    } else {
+        return None;  // Not a quarter, bail out
+    };
+
+    // Now we KNOW we have a state
+    if state.existed_in(1900) {
+        Some(format!("{state:?} is pretty old, for America!"))
+    } else {
+        Some(format!("{state:?} is relatively new."))
+    }
+}
+```
+
+let else
+
+```rust
+fn describe_state_quarter(coin: Coin) -> Option<String> {
+    let Coin::Quarter(state) = coin else {
+        return None;  // Not a quarter, bail out
+    };
+
+    // Now we KNOW we have a state
+    if state.existed_in(1900) {
+        Some(format!("{state:?} is pretty old, for America!"))
+    } else {
+        Some(format!("{state:?} is relatively new."))
+    }
+}
+```
